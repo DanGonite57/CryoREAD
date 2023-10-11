@@ -99,7 +99,10 @@ def make_predictions(test_loader,model,Coord_Voxel,voxel_size,overall_shape,num_
             #print(input.shape)
             avg_meters['data_time'].update(time.time() - end_time, input.size(0))
             cur_id = cur_index.detach().cpu().numpy()#test_loader.dataset.id_list[cur_index.detach().numpy()]
-            input = input.cuda()
+
+            if torch.cuda.is_available():
+                input = input.cuda()
+
             chain_outputs, base_outputs  = model(input)
             final_output = torch.sigmoid(chain_outputs[0]).detach().cpu().numpy()
             final_base = torch.sigmoid(base_outputs[0]).detach().cpu().numpy()
@@ -184,9 +187,13 @@ def unet_detect_map_cascad(map_data,resume_model_path,voxel_size,
                           is_deconv=True,
                           is_batchnorm=True)
 
-    model = model.cuda()
+    if torch.cuda.is_available():
+        model = model.cuda()
+        state_dict = torch.load(resume_model_path)
+    else:
+        state_dict = torch.load(resume_model_path, map_location=torch.device("cpu"))
+
     model = nn.DataParallel(model, device_ids=None)
-    state_dict = torch.load(resume_model_path)
     msg = model.load_state_dict(state_dict['state_dict'])
     print("model loading: ",msg)
     cur_prob_path = os.path.join(train_save_path, "chain_predictprob.npy")
