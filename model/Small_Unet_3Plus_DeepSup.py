@@ -4,18 +4,26 @@ import torch.nn.functional as F
 from model.Unet_Layers import unetConv3d
 from model.init_weights import init_weights
 
-'''
+"""
    Small UNet 3+ with deep supervision
-'''
+"""
+
 
 class Small_UNet_3Plus_DeepSup(nn.Module):
-    def __init__(self, in_channels=3, n_classes=1, feature_scale=4, is_deconv=True, is_batchnorm=True):
+    def __init__(
+        self,
+        in_channels=3,
+        n_classes=1,
+        feature_scale=4,
+        is_deconv=True,
+        is_batchnorm=True,
+    ):
         super(Small_UNet_3Plus_DeepSup, self).__init__()
         self.is_deconv = is_deconv
         self.in_channels = in_channels
         self.is_batchnorm = is_batchnorm
         self.feature_scale = feature_scale
-        #small unet
+        # small unet
         filters = [64, 128, 256]
         ## -------------Encoder--------------
         self.conv1 = unetConv3d(self.in_channels, filters[0], self.is_batchnorm)
@@ -31,7 +39,7 @@ class Small_UNet_3Plus_DeepSup(nn.Module):
         self.CatBlocks = 3
         self.UpChannels = self.CatChannels * self.CatBlocks
 
-        #stage 2d
+        # stage 2d
         self.h1_PT_hd2 = nn.MaxPool3d(2, 2, ceil_mode=True)
         self.h1_PT_hd2_conv = nn.Conv3d(filters[0], self.CatChannels, 3, padding=1)
         self.h1_PT_hd2_bn = nn.BatchNorm3d(self.CatChannels)
@@ -41,7 +49,7 @@ class Small_UNet_3Plus_DeepSup(nn.Module):
         self.h2_Cat_hd2_bn = nn.BatchNorm3d(self.CatChannels)
         self.h2_Cat_hd2_relu = nn.ReLU(inplace=True)
 
-        self.hd3_UT_hd2 = nn.Upsample(scale_factor=2, mode='trilinear')  # 14*14
+        self.hd3_UT_hd2 = nn.Upsample(scale_factor=2, mode="trilinear")  # 14*14
         self.hd3_UT_hd2_conv = nn.Conv3d(filters[2], self.CatChannels, 3, padding=1)
         self.hd3_UT_hd2_bn = nn.BatchNorm3d(self.CatChannels)
         self.hd3_UT_hd2_relu = nn.ReLU(inplace=True)
@@ -50,20 +58,22 @@ class Small_UNet_3Plus_DeepSup(nn.Module):
         self.bn2d_1 = nn.BatchNorm3d(self.UpChannels)
         self.relu2d_1 = nn.ReLU(inplace=True)
 
-        #stage 1
+        # stage 1
         # h1->320*320, hd1->320*320, Concatenation
         self.h1_Cat_hd1_conv = nn.Conv3d(filters[0], self.CatChannels, 3, padding=1)
         self.h1_Cat_hd1_bn = nn.BatchNorm3d(self.CatChannels)
         self.h1_Cat_hd1_relu = nn.ReLU(inplace=True)
 
         # hd2->160*160, hd1->320*320, Upsample 2 times
-        self.hd2_UT_hd1 = nn.Upsample(scale_factor=2, mode='trilinear')  # 14*14
-        self.hd2_UT_hd1_conv = nn.Conv3d(self.UpChannels, self.CatChannels, 3, padding=1)
+        self.hd2_UT_hd1 = nn.Upsample(scale_factor=2, mode="trilinear")  # 14*14
+        self.hd2_UT_hd1_conv = nn.Conv3d(
+            self.UpChannels, self.CatChannels, 3, padding=1
+        )
         self.hd2_UT_hd1_bn = nn.BatchNorm3d(self.CatChannels)
         self.hd2_UT_hd1_relu = nn.ReLU(inplace=True)
 
         # hd3->80*80, hd1->320*320, Upsample 4 times
-        self.hd3_UT_hd1 = nn.Upsample(scale_factor=4, mode='trilinear')  # 14*14
+        self.hd3_UT_hd1 = nn.Upsample(scale_factor=4, mode="trilinear")  # 14*14
         self.hd3_UT_hd1_conv = nn.Conv3d(filters[2], self.CatChannels, 3, padding=1)
         self.hd3_UT_hd1_bn = nn.BatchNorm3d(self.CatChannels)
         self.hd3_UT_hd1_relu = nn.ReLU(inplace=True)
@@ -72,25 +82,22 @@ class Small_UNet_3Plus_DeepSup(nn.Module):
         self.conv1d_1 = nn.Conv3d(self.UpChannels, self.UpChannels, 3, padding=1)  # 16
         self.bn1d_1 = nn.BatchNorm3d(self.UpChannels)
         self.relu1d_1 = nn.ReLU(inplace=True)
-        #final process
+        # final process
 
-        self.upscore3 = nn.Upsample(scale_factor=4, mode='trilinear')
-        self.upscore2 = nn.Upsample(scale_factor=2, mode='trilinear')
+        self.upscore3 = nn.Upsample(scale_factor=4, mode="trilinear")
+        self.upscore2 = nn.Upsample(scale_factor=2, mode="trilinear")
 
         # DeepSup
         self.outconv1 = nn.Conv3d(self.UpChannels, n_classes, 3, padding=1)
         self.outconv2 = nn.Conv3d(self.UpChannels, n_classes, 3, padding=1)
         self.outconv3 = nn.Conv3d(filters[2], n_classes, 3, padding=1)
 
-
-
-
         # initialise weights
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
-                init_weights(m, init_type='kaiming')
+                init_weights(m, init_type="kaiming")
             elif isinstance(m, nn.BatchNorm3d):
-                init_weights(m, init_type='kaiming')
+                init_weights(m, init_type="kaiming")
 
     def forward(self, inputs):
         ## -------------Encoder-------------
@@ -103,20 +110,34 @@ class Small_UNet_3Plus_DeepSup(nn.Module):
         hd3 = self.conv3(h3)  # h3->80*80*256
 
         ## -------------Decoder-------------
-        #stage 2:
-        h1_PT_hd2 = self.h1_PT_hd2_relu(self.h1_PT_hd2_bn(self.h1_PT_hd2_conv(self.h1_PT_hd2(h1))))
+        # stage 2:
+        h1_PT_hd2 = self.h1_PT_hd2_relu(
+            self.h1_PT_hd2_bn(self.h1_PT_hd2_conv(self.h1_PT_hd2(h1)))
+        )
         h2_Cat_hd2 = self.h2_Cat_hd2_relu(self.h2_Cat_hd2_bn(self.h2_Cat_hd2_conv(h2)))
-        hd3_UT_hd2 = self.hd3_UT_hd2_relu(self.hd3_UT_hd2_bn(self.hd3_UT_hd2_conv(self.hd3_UT_hd2(hd3))))
-        hd2 = self.relu2d_1(self.bn2d_1(self.conv2d_1(
-            torch.cat((h1_PT_hd2, h2_Cat_hd2, hd3_UT_hd2), 1))))  # hd4->40*40*UpChannels
+        hd3_UT_hd2 = self.hd3_UT_hd2_relu(
+            self.hd3_UT_hd2_bn(self.hd3_UT_hd2_conv(self.hd3_UT_hd2(hd3)))
+        )
+        hd2 = self.relu2d_1(
+            self.bn2d_1(
+                self.conv2d_1(torch.cat((h1_PT_hd2, h2_Cat_hd2, hd3_UT_hd2), 1))
+            )
+        )  # hd4->40*40*UpChannels
 
-        #stage 1:
+        # stage 1:
 
         h1_Cat_hd1 = self.h1_Cat_hd1_relu(self.h1_Cat_hd1_bn(self.h1_Cat_hd1_conv(h1)))
-        hd2_UT_hd1 = self.hd2_UT_hd1_relu(self.hd2_UT_hd1_bn(self.hd2_UT_hd1_conv(self.hd2_UT_hd1(hd2))))
-        hd3_UT_hd1 = self.hd3_UT_hd1_relu(self.hd3_UT_hd1_bn(self.hd3_UT_hd1_conv(self.hd3_UT_hd1(hd3))))
-        hd1 = self.relu1d_1(self.bn1d_1(self.conv1d_1(
-            torch.cat((h1_Cat_hd1, hd2_UT_hd1, hd3_UT_hd1), 1))))  # hd1->320*320*UpChannels
+        hd2_UT_hd1 = self.hd2_UT_hd1_relu(
+            self.hd2_UT_hd1_bn(self.hd2_UT_hd1_conv(self.hd2_UT_hd1(hd2)))
+        )
+        hd3_UT_hd1 = self.hd3_UT_hd1_relu(
+            self.hd3_UT_hd1_bn(self.hd3_UT_hd1_conv(self.hd3_UT_hd1(hd3)))
+        )
+        hd1 = self.relu1d_1(
+            self.bn1d_1(
+                self.conv1d_1(torch.cat((h1_Cat_hd1, hd2_UT_hd1, hd3_UT_hd1), 1))
+            )
+        )  # hd1->320*320*UpChannels
 
         d3 = self.outconv3(hd3)
         d3 = self.upscore3(d3)  # 64->256

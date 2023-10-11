@@ -11,7 +11,9 @@ def Unify_Map(input_map_path, new_map_path):
     data = mrc.data.copy()
     voxel_size = np.asarray(mrc.voxel_size.tolist(), dtype=np.float32)
     origin = np.array(mrc.header.origin.tolist(), dtype=np.float32)
-    nstart = np.asarray([mrc.header.nxstart, mrc.header.nystart, mrc.header.nzstart], dtype=np.float32)
+    nstart = np.asarray(
+        [mrc.header.nxstart, mrc.header.nystart, mrc.header.nzstart], dtype=np.float32
+    )
     cella = np.array(mrc.header.cella.tolist(), dtype=np.float32)
     mapcrs = np.asarray([mrc.header.mapc, mrc.header.mapr, mrc.header.maps], dtype=int)
     if np.sum(nstart) == 0:
@@ -43,7 +45,7 @@ def Unify_Map(input_map_path, new_map_path):
 
 
 if __name__ == "__main__":
-    input_map_path = Path('../example/21051.mrc')
-    new_map_path = Path('../example/21051_unified.mrc')
+    input_map_path = Path("../example/21051.mrc")
+    new_map_path = Path("../example/21051_unified.mrc")
     new_map_path = Unify_Map(input_map_path, new_map_path)
     print(f"New map path is {new_map_path}")
