@@ -5,7 +5,7 @@ import math
 import os
 from ops.acc_graph import acc_get_density_cut, acc_edge_density, acc_edge_prob
 from ops.acc_local_mst import acc_local_mst
-
+from numba_progress import ProgressBar
 
 class Main_Graph(object):
     def __init__(self, params):
@@ -52,9 +52,10 @@ class Main_Graph(object):
             tmp_adj = np.zeros(self.Nnode * 2000)
             tmp_density = np.zeros(self.Nnode * 2000)
             tmp_Nnode = int(self.Nnode)
-            tmp_adj, tmp_Ne, tmp_Density = acc_get_density_cut(
-                tmp_Nori, tmp_merged_data, tmp_adj, tmp_density, tmp_origrid, tmp_Nnode
-            )
+            with ProgressBar(total=tmp_Nori) as progress:
+                tmp_adj, tmp_Ne, tmp_Density = acc_get_density_cut(
+                    tmp_Nori, tmp_merged_data, tmp_adj, tmp_density, tmp_origrid, tmp_Nnode, progress
+                )
             Build_connect_dens_dict(tmp_adj, tmp_Density, tmp_data_path)
             tmp_adj = tmp_adj[:tmp_Ne]
             tmp_Density = tmp_Density[:tmp_Ne]

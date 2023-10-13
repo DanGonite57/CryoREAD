@@ -1,4 +1,4 @@
-from numba import jit
+from numba import jit, prange
 import numpy as np
 import math
 
@@ -354,8 +354,10 @@ def acc_get_density_cut_twograph(
     return adj, Ne, density_record
 
 
-@jit(nogil=True, nopython=True)
-def acc_get_density_cut(Nori, merged_data, adj, density_record, origrid, Nnode):
+@jit(nogil=True, nopython=True, parallel=True)
+def acc_get_density_cut(
+    Nori, merged_data, adj, density_record, origrid, Nnode, progress_proxy
+):
     """
     :param Nori: number of grid points that can be used
     :param merged_data: an array with format # init_id, x,y,z,density, merged_to_id
@@ -367,14 +369,14 @@ def acc_get_density_cut(Nori, merged_data, adj, density_record, origrid, Nnode):
     """
     Ne = 0
     abanden = 0
-    for ii in range(Nori):
+    for ii in prange(Nori):
         m1 = int(merged_data[ii, 0])  # original id
         merged_id1 = int(merged_data[m1, 5])  # link to  merged point id
-        if ii % 10000 == 0:
-            print(ii)
+        if ii % 1000 == 0:
+            progress_proxy.update(1000)
         if merged_id1 == -1:  # Merged node, ignore
             continue
-        for jj in range(ii + 1, Nori):
+        for jj in prange(ii + 1, Nori):
             m2 = int(merged_data[jj, 0])
             if m1 == m2:
                 continue
@@ -386,7 +388,7 @@ def acc_get_density_cut(Nori, merged_data, adj, density_record, origrid, Nnode):
                 continue
 
             adjunct_label = False
-            for kk in range(3):
+            for kk in prange(3):
                 if (origrid[ii][kk] - origrid[jj][kk]) ** 2 > 1:
                     adjunct_label = True  # It will not connected anymore
                     break

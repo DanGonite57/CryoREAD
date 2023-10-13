@@ -4,6 +4,7 @@ import numpy as np
 from ops.argparser import argparser
 from ops.os_operation import mkdir
 import time
+import numba
 
 
 def init_save_path(origin_map_path):
@@ -19,6 +20,9 @@ def init_save_path(origin_map_path):
 
 if __name__ == "__main__":
     params = argparser()
+
+    numba.set_num_threads(params["thread"])
+
     if params["mode"] == 0:
         gpu_id = params["gpu"]
         if gpu_id is not None:
